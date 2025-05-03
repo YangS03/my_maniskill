@@ -197,6 +197,24 @@
     ],
     "density": 100000
   },
+  "orange": {
+    "bbox": {
+      "min": [
+        -0.035,
+        -0.035,
+        -0.034
+      ],
+      "max": [
+        0.035,
+        0.035,
+        0.034
+      ]
+    },
+    "scales": [
+      0.6
+    ],
+    "density": 800
+  },
   "dummy_sink_target_plane": {
     "bbox": {
       "min": [
