@@ -493,7 +493,7 @@ class FreePlaceLemonNearPearEnv(MoveNearGoogleInSceneEnv):
 @register_env("FreePlaceLemonNearPearEnv-v1", max_episode_steps=80)
 class FreePlaceLemonNearPearEnvV1(FreePlaceLemonNearPearEnv):
     def get_language_instruction(self, **kwargs):
-        return "Can you place the most sour fruit to the less sour one?"
+        return "Can you place the sourest fruit to the less sour one?"
 
 
 @register_env("FreePlaceLemonNearPearEnv-v2", max_episode_steps=80)
@@ -525,7 +525,7 @@ class FreePlaceLNearVEnv(MoveNearGoogleInSceneEnv):
 
             ([-0.33, 0.04], [-0.13, 0.19], [-0.33, 0.34]),
             ([-0.13, 0.19], [-0.33, 0.34], [-0.33, 0.04]),
-            ([-0.13, 0.19], [-0.33, 0.34], [-0.33, 0.04]),
+            ([-0.13, 0.19], [-0.33, 0.04], [-0.33, 0.34]),
 
             ([-0.13, 0.04], [-0.33, 0.19], [-0.13, 0.34]),
             ([-0.33, 0.19], [-0.13, 0.04], [-0.13, 0.34]),
@@ -603,7 +603,7 @@ class FreePlaceLNearAEnv(MoveNearGoogleInSceneEnv):
 
             ([-0.33, 0.04], [-0.13, 0.19], [-0.33, 0.34]),
             ([-0.13, 0.19], [-0.33, 0.34], [-0.33, 0.04]),
-            ([-0.13, 0.19], [-0.33, 0.34], [-0.33, 0.04]),
+            ([-0.13, 0.19], [-0.33, 0.04], [-0.33, 0.34]),
 
             ([-0.13, 0.04], [-0.33, 0.19], [-0.13, 0.34]),
             ([-0.33, 0.19], [-0.13, 0.04], [-0.13, 0.34]),
@@ -677,7 +677,7 @@ class FreePlaceBottleNearOrangeEnv(MoveNearGoogleInSceneEnv):
 
             ([-0.33, 0.04], [-0.13, 0.19], [-0.33, 0.34]),
             ([-0.13, 0.19], [-0.33, 0.34], [-0.33, 0.04]),
-            ([-0.13, 0.19], [-0.33, 0.34], [-0.33, 0.04]),
+            ([-0.13, 0.19], [-0.33, 0.04], [-0.33, 0.34]),
 
             ([-0.13, 0.04], [-0.33, 0.19], [-0.13, 0.34]),
             ([-0.33, 0.19], [-0.13, 0.04], [-0.13, 0.34]),
@@ -751,7 +751,7 @@ class FreePlaceMugNearPlaystationEnv(MoveNearGoogleInSceneEnv):
 
             ([-0.33, 0.04], [-0.13, 0.19], [-0.33, 0.34]),
             ([-0.13, 0.19], [-0.33, 0.34], [-0.33, 0.04]),
-            ([-0.13, 0.19], [-0.33, 0.34], [-0.33, 0.04]),
+            ([-0.13, 0.19], [-0.33, 0.04], [-0.33, 0.34]),
 
             ([-0.13, 0.04], [-0.33, 0.19], [-0.13, 0.34]),
             ([-0.33, 0.19], [-0.13, 0.04], [-0.13, 0.34]),

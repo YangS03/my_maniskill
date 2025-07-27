@@ -278,7 +278,7 @@ class MoveNearInSceneEnv(CustomSceneEnv):
         obj_init_xys = self.obj_init_options.get("init_xys", None)
         assert obj_init_xys is not None
         obj_init_xys = np.array(obj_init_xys)  # [n_objects, 2]
-        assert obj_init_xys.shape == (len(self.episode_objs), 2)
+        assert obj_init_xys.shape == (len(self.episode_objs), 2), f"obj_init_xys.shape: {obj_init_xys.shape}, len(self.episode_objs): {len(self.episode_objs)}"
 
         obj_init_z = self.obj_init_options.get("init_z", self.scene_table_height)
         obj_init_z = obj_init_z + 0.5 # let object fall onto the table

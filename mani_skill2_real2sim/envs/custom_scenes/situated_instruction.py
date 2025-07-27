@@ -236,7 +236,7 @@ class AltGraspMugDistractorInSceneEnv(GraspSingleCustomOrientationInSceneEnv):
         return super().reset(seed=seed, options=options)
 
     def get_language_instruction(self, **kwargs):
-        task_description = f"I want to drink the coffee. Grab the mug for me."
+        task_description = f"I want to drink the coffee. Grab the tool for me."
         return task_description
 
 @register_env("AltGraspMugDistractorInSceneEnv-v1", max_episode_steps=80)
@@ -836,3 +836,220 @@ class AltDryOrangeInSceneEnv(PutOnBridgeInSceneEnv):
             scale=5,
             shadow_map_size=2048,
         )
+
+# =============================== bridge v2 ===============================
+
+@register_env("AltPutSponeOnPlateInScene-v0", max_episode_steps=60)
+class AltPutSponeOnPlateInScene(PutOnBridgeInSceneEnv):
+    def __init__(self,
+        source_obj_name: str = None,
+        target_obj_name: str = None,
+        other_obj_names: List[str] = None,
+        xy_configs: List[np.ndarray] = None,
+        quat_configs: List[np.ndarray] = None,
+        **kwargs,
+    ):
+        self.DEFAULT_ASSET_ROOT = "{ASSET_DIR}/custom"
+        self.DEFAULT_SCENE_ROOT = "{ASSET_DIR}/hab2_bench_assets"
+        self.DEFAULT_MODEL_JSON = "info_bridge_custom_v0.json"
+
+        if source_obj_name is None: # skip init object
+        
+            source_obj_name = 'bridge_spoon_generated_modified'
+            target_obj_name = "bridge_plate_objaverse_larger"
+
+            additional_obj_name = ["orange", "table_cloth_generated_shorter"]
+
+            if other_obj_names is None:
+                self._other_obj_names = additional_obj_name
+            else:
+                self._other_obj_names = other_obj_names
+
+        # Define positions for all objects
+
+        if xy_configs is None:
+
+            xy_center = np.array([-0.18, 0.08])
+            half_edge_length_xs = [0.075, 0.1]
+            half_edge_length_ys = [0.1, 0.12]
+            xy_configs = []
+
+            for (half_edge_length_x, half_edge_length_y) in zip(
+                half_edge_length_xs, half_edge_length_ys
+            ):
+                grid_pos = np.array([[0, 0], [0, 1], [1, 0], [1, 1]]) * 2 - 1
+                grid_pos = (
+                    grid_pos * np.array([half_edge_length_x, half_edge_length_y])[None]
+                    + xy_center[None]
+                )
+
+                for i, grid_pos_1 in enumerate(grid_pos):
+                    for j, grid_pos_2 in enumerate(grid_pos):
+                        if i != j:
+                            additional_positions = [grid_pos[k] for k in range(len(grid_pos)) if k != i and k != j]
+                            xy_config = np.array([grid_pos_1, grid_pos_2] + additional_positions) # size: 4 x 2
+                            xy_configs.append(xy_config)
+
+            quat_configs = [ # no rotation for orange
+                np.array([euler2quat(0, 0, np.pi), [1, 0, 0, 0], [1, 0, 0, 0], [1, 0, 0, 0]]),
+            ]
+        super().__init__(
+            source_obj_name=source_obj_name,
+            target_obj_name=target_obj_name,
+            xy_configs=xy_configs,
+            quat_configs=quat_configs,
+            **kwargs,
+        )
+
+    def _set_model(self, model_ids, model_scales):
+        """Set the model id and scale. If not provided, choose a triplet randomly from self.model_ids."""
+        self.episode_model_ids = [self._source_obj_name, self._target_obj_name] + self._other_obj_names
+        # model scales
+        reconfigure = False
+        if model_scales is None:
+            model_scales = []
+            for model_id in self.episode_model_ids:
+                this_available_model_scales = self.model_db[model_id].get(
+                    "scales", None
+                )
+                if this_available_model_scales is None:
+                    model_scales.append(1.0)
+                else:
+                    model_scales.append(
+                        random_choice(this_available_model_scales, self._episode_rng)
+                    )
+        if not self._list_equal(model_scales, self.episode_model_scales):
+            self.episode_model_scales = model_scales
+            reconfigure = True
+
+        # model bbox sizes
+        model_bbox_sizes = []
+        for model_id, model_scale in zip(
+            self.episode_model_ids, self.episode_model_scales
+        ):
+            model_info = self.model_db[model_id]
+            if "bbox" in model_info:
+                bbox = model_info["bbox"]
+                bbox_size = np.array(bbox["max"]) - np.array(bbox["min"])
+                model_bbox_sizes.append(bbox_size * model_scale)
+            else:
+                raise ValueError(f"Model {model_id} does not have bbox info.")
+        self.episode_model_bbox_sizes = model_bbox_sizes
+
+        return reconfigure
+
+    def _load_model(self):
+        self.episode_objs = []
+        for (model_id, model_scale) in zip(
+            self.episode_model_ids, self.episode_model_scales
+        ):
+            density = self.model_db[model_id].get("density", 1000)
+
+            obj = self._build_actor_helper(
+                model_id,
+                self._scene,
+                scale=model_scale,
+                density=density,
+                physical_material=self._scene.create_physical_material(
+                    static_friction=self.obj_static_friction,
+                    dynamic_friction=self.obj_dynamic_friction,
+                    restitution=0.0,
+                ),
+                root_dir=self.asset_root,
+            )
+            obj.name = model_id
+            self.episode_objs.append(obj)
+
+    def get_language_instruction(self, **kwargs):
+        return "put the tool that can be used to feed a baby on the plate"
+
+    def reset(self, seed=None, options=None):
+        if options is None:
+            options = dict()
+        options = options.copy()
+
+        self.set_episode_rng(seed)
+
+        obj_init_options = options.get("obj_init_options", {})
+        obj_init_options = obj_init_options.copy()
+        episode_id = obj_init_options.get(
+            "episode_id",
+            self._episode_rng.randint(len(self._xy_configs) * len(self._quat_configs)),
+        )
+        xy_config = self._xy_configs[
+            (episode_id % (len(self._xy_configs) * len(self._quat_configs)))
+            // len(self._quat_configs)
+        ]
+        quat_config = self._quat_configs[episode_id % len(self._quat_configs)]
+        # make sure the source is always at 0 and the target is always at 1
+        options["model_ids"] = [self._source_obj_name, self._target_obj_name] + self._other_obj_names
+        obj_init_options["source_obj_id"] = 0
+        obj_init_options["target_obj_id"] = 1
+        obj_init_options["init_xys"] = xy_config # size: 4 x 2
+        obj_init_options["init_rot_quats"] = quat_config # size: 4 x 4
+        options["obj_init_options"] = obj_init_options
+
+        obs, info = super().reset(seed=self._episode_seed, options=options)
+        info.update({"episode_id": episode_id})
+        return obs, info
+
+@register_env("AltPutOrangeOnPlateInScene-v0", max_episode_steps=60)
+class AltPutOrangeOnPlateInScene(AltPutSponeOnPlateInScene):
+    def __init__(self,
+        source_obj_name: str = None,
+        target_obj_name: str = None,
+        other_obj_names: List[str] = None,
+        xy_configs: List[np.ndarray] = None,
+        quat_configs: List[np.ndarray] = None,
+        **kwargs,
+    ):
+        self.DEFAULT_ASSET_ROOT = "{ASSET_DIR}/custom"
+        self.DEFAULT_SCENE_ROOT = "{ASSET_DIR}/hab2_bench_assets"
+        self.DEFAULT_MODEL_JSON = "info_bridge_custom_v0.json"
+        
+        source_obj_name = "orange"
+        target_obj_name = "bridge_plate_objaverse_larger"
+
+        additional_obj_name = ["bridge_spoon_generated_modified", "opened_coke_can"]
+
+        if other_obj_names is None:
+            self._other_obj_names = additional_obj_name
+        else:
+            self._other_obj_names = other_obj_names
+
+        # Define positions for all objects
+
+        xy_center = np.array([-0.18, 0.08])
+        half_edge_length_xs = [0.075, 0.1]
+        half_edge_length_ys = [0.1, 0.12]
+        xy_configs = []
+
+        for (half_edge_length_x, half_edge_length_y) in zip(
+            half_edge_length_xs, half_edge_length_ys
+        ):
+            grid_pos = np.array([[0, 0], [0, 1], [1, 0], [1, 1]]) * 2 - 1
+            grid_pos = (
+                grid_pos * np.array([half_edge_length_x, half_edge_length_y])[None]
+                + xy_center[None]
+            )
+
+            for i, grid_pos_1 in enumerate(grid_pos):
+                for j, grid_pos_2 in enumerate(grid_pos):
+                    if i != j:
+                        additional_positions = [grid_pos[k] for k in range(len(grid_pos)) if k != i and k != j]
+                        xy_config = np.array([grid_pos_1, grid_pos_2] + additional_positions) # size: 4 x 2
+                        xy_configs.append(xy_config)
+
+        quat_configs = [ # no rotation for orange
+            np.array([euler2quat(0, 0, np.pi), [1, 0, 0, 0], [1, 0, 0, 0], [1, 0, 0, 0]]),
+        ]
+        super().__init__(
+            source_obj_name=source_obj_name,
+            target_obj_name=target_obj_name,
+            xy_configs=xy_configs,
+            quat_configs=quat_configs,
+            **kwargs,
+        )
+
+    def get_language_instruction(self, **kwargs):
+        return "I do not want the drink, please put the fruit on the plate"
