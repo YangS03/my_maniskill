@@ -5,6 +5,3 @@ from . import put_on_in_scene
 from . import place_in_closed_drawer_in_scene
 from . import situated_instruction
 from . import free_form_instruction
-
-from . import oracle_situated_instruction
-from . import oracle_free_form_instruction
